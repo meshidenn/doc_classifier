@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block headline%}
+{{ setup.name }}
+{% endblock%}
+
+{% block content %}
+<form method="post" action={{ setup.do_action }}>
+    {% for form in forms %}
+    <div class="form-group">
+        <label for={{ form.label }}>{{ form.name }}</label>
+        <select class="form-control" id={{ form.label }} name={{ form.name }}>
+            {% for file in form.files %}
+            <option>{{ file }}</option>
+            {% endfor %}
+        </select>
+    </div> 
+    {% endfor %}
+    <div class="form-group">
+        <input type="submit" class="form-control btn btn-ptimary bg-dark text-white">
+    </div>
+</form>
+{% endblock %}

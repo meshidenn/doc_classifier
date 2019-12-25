@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block headline %}
+config一覧
+{% endblock%}
+
+{% block content %}
+<ul>
+    {% for name in names %}
+    <li>{{ name }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

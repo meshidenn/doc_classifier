@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+        <a href="/" class="navbar-brand">Doc Classifier</a>
+        <button class="navbar-toggler" type="button"
+          data-toggle="collapse"
+          data-target="#navmenu1"
+          aria-controls="navmenu1"
+          aria-expanded="false"
+          aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navmenu1">
+            <div class="navbar-nav">
+                <a class="nav-item nav-link" href="/upload">データ登録</a>
+                <a class="nav-item nav-link" href="/file_list">データ一覧</a>
+                <a class="nav-item nav-link" href="/model_config">モデル設定</a>
+                <a class="nav-item nav-link" href="/model_learn">モデル学習</a>
+                <a class="nav-item nav-link" href="/model_setup">モデル読み込み</a>
+                <a class="nav-item nav-link" href="/valification">交差検証</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+            <li class="{{ cateogry }}"> {{ message }} </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        <h2 class="mb-4">
+            {% block headline %}{% endblock %}
+        </h2>
+        <div>
+            {% block content %}{% endblock %}
+        </div>
+        <div class="text-right mt-3">
+            {% block footer %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+</body>
+</html>

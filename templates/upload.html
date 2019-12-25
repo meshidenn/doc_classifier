@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block headline %}
+データ登録
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col s8 offset-s2">
+        <form id="upload_form" action="/upload_result" method="post" enctype="multipart/form-data">
+            <div class="file-field input-filed row">
+                <div class="btn col s2">
+                    <input type="file" name="uploadfile">
+                </div>
+                <div class="file-path-wrapper col s4">
+                    <input type="text" placeholder="ファイル名を入力してください" name="filename">
+                </div>
+                <div class="col s2">
+                    <button class="btn waves-effect waves-light blue" type="submit">アップロード</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
