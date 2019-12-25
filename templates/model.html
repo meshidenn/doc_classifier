@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<form method="post" action="/save_config">
+    <div class="form-group">
+        <label for="name">config名</label>
+        <input teype="text" class="form-control" id="name" name="name">
+    </div>
+    <div class="form-group">
+        <label for="sel1">アルゴリズム</label>
+        <select class="form-control" id="sel1" name="algo">
+            <option>KNN</option>
+            <option>Linear SVM</option>
+            <option>Kernel SVM</option>
+            <option>Random Forest</option>
+            <option>MLP</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="sel2">hyper parameter(json)</label>
+        <input type="text" class="form-control" id="sel2" name="hyper">
+    </div>
+
+    <div class="form-group">
+        <input type="submit" class="form-control btn btn-ptimary bg-dark text-white">
+    </div>
+</form>
+{% endblock %}
