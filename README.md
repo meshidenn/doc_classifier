@@ -24,6 +24,7 @@
 3. データの適宜追加
 4. dataへのprimary keyの設定(sqliteではできないので、unique indexにした)
 5. MVC的な分解(大半がapp.pyに入っている)
+6. 諸々のtest
 
 ## この先必要そうな知見
 1. DB系統
