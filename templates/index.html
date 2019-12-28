@@ -7,7 +7,7 @@ config一覧
 {% block content %}
 <ul>
     {% for name in names %}
-    <li>{{ name }}</li>
+        <li><a href="/{{ name }}">{{ name }}</a></li>
     {% endfor %}
 </ul>
 {% endblock %}

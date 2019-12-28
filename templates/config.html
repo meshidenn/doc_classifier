@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block headline %}
+config詳細
+{% endblock %}
+
+{% block content %}
+<table>
+    {% for key, value in config.items() %}
+    <tr>
+        <th> {{ key }} </th>
+        <td> {{ value }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
