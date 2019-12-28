@@ -20,7 +20,7 @@
 
 ## やらなかったこと
 1. configを変更できるようにする
-2. text以外をカテゴリ変数や数値として使用する
+2. text以外をカテゴリ変数や数値にして、機械学習のfeatureに使用する
 3. データの適宜追加
 4. dataへのprimary keyの設定(sqliteではできないので、unique indexにした)
 5. MVC的な分解(大半がapp.pyに入っている)
