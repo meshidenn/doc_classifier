@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+
+{% block headline%}
+データ一覧
+{% endblock%}
+
+{{ pagination.info }}
+{{ pagination.links }}
+{% block content %}
+<table class="table">
+<thead>
+    {% for h in header %}
+    <th> {{ h }} </th>
+    {% endfor %}
+</thead>
+<tbody>
+    {% for value in values %}
+    <tr>
+        {% for v in value %}
+        <td> {{ v }} </td>
+        {% endfor %}
+    </tr>
+        
+    {% endfor %}
+</tbody>
+
+</table>
+{{ pagination.links }}
+
+{% endblock %}

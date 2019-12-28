@@ -8,7 +8,7 @@ class Config(Base):
     __tablename__ = 'config'
     
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String, unique=True)
     algo = Column(String)
     hyper = Column(Text)
 

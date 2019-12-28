@@ -1,4 +1,5 @@
 from flask import Flask, request, make_response, jsonify, render_template, request, session, redirect, flash
+from flask_paginate import Pagination, get_page_parameter
 import json
 import numpy as np
 import os
@@ -39,14 +40,38 @@ def top():
     configs = sorted([str(config[0]) for config in configs])
     return render_template('index.html', names=configs)
 
+
+@app.route('/<config_name>', methods=['GET'])
+def config_content(config_name):
+    ses = Session()
+    config = ses.query(Config).filter(Config.name == config_name).one()
+    config_content = config.toDict()
+    return render_template('config.html', config=config_content)
+
+
+
 @app.route('/upload', methods=['GET'])
 def upload_viewer():
     return render_template('upload.html')
 
 
-@app.route('/data_list', methods=['GET'])
-def data_list():
-    return render_template('list.html')
+@app.route('/data', methods=['GET'])
+def get_data_list():
+    meta = MetaData(bind=ENGINE, reflect=True)
+    tables = list(meta.tables)
+    datas = sorted([str(table) for table in tables if table != 'config'])
+    return render_template('data_list.html', names=datas)
+
+
+@app.route('/data/<table_name>', methods=['GET'])
+def get_data_content(table_name):
+    data = pd.read_sql_table(table_name, ENGINE)
+    page = request.args.get(get_page_parameter(), type=int, default=1)
+    column = data.columns
+    content = data.values
+    res = content[(page - 1)* 10: page*10]
+    pagination = Pagination(page=page, total=len(content), per_page=10, css_framework="bootstrap4")
+    return render_template('data.html', header=column, values=res, pagination=pagination)
 
 
 @app.route('/model_config', methods=['GET'])
@@ -156,24 +181,20 @@ def upload_multipart():
         make_response(jsonify({'result': 'uploadfile is required.'}))
 
     file = request.files['uploadfile']
-    filename = request.form['filename']
-    if not(filename):
-        flash('ファイル名が指定されていません', "alert alert-danger")
+    tablename = request.form['tablename']
+    key = request.form['key']
+    if not(tablename):
+        flash('テーブル名が指定されていません', "alert alert-danger")
         return redirect('/upload')
 
+    if not(key):
+        flash('primary keyが指定されていません', "alert alert-danger")
+
     df = pd.read_csv(file, header=0)
-    print(df.head(3))
-    df.to_sql(filename, ENGINE, index=False)
+    df.to_sql(tablename, ENGINE, index=False)
+    ENGINE.execute('create unique index uindex on {}({})'.format(tablename, key))
     flash("ファイルをデータベースに保存しました", "alert alert-success")
     return redirect('/upload')
-
-
-@app.route('/file_list', methods=['GET'])
-def get_file_list():
-    meta = MetaData(bind=ENGINE, reflect=True)
-    tables = list(meta.tables)
-    datas = sorted([str(table) for table in tables if table != 'config'])
-    return render_template('files.html', names=datas)
 
 
 @app.route('/save_config', methods=['POST'])
@@ -187,8 +208,6 @@ def save_model_config():
     ses = Session()
     ses.add(Config(name=config_name, algo=model_name, hyper=hyper_parameter))
     flash('登録に成功しました', "alert alert-success")
-    ses.commit()
-    ses.close()
     return redirect('/model_config')
 
 
