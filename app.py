@@ -5,6 +5,13 @@ import os
 import pandas as pd
 import werkzeug
 import MeCab
+
+from sqlalchemy import create_engine, Column, Integer, String, Text, MetaData, Table
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from model import Config
+from db_setting import ENGINE, Base
+
 from joblib import dump, load
 from datetime import datetime
 from pathlib import Path
@@ -22,16 +29,14 @@ app = Flask(__name__)
 app.secret_key = 'secret key'
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 
-UPLOAD_DIR = 'upload'
-CONFIG_DIR = 'config'
 MODEL_DIR = 'model'
 
 
 @app.route('/', methods=['GET'])
 def top():
-    config_dir = Path(CONFIG_DIR)
-    configs = config_dir.glob("*")
-    configs = sorted([str(conf.stem) for conf in configs])
+    ses = Session()
+    configs = ses.query(Config.name).all()
+    configs = sorted([str(config[0]) for config in configs])
     return render_template('index.html', names=configs)
 
 @app.route('/upload', methods=['GET'])
@@ -52,15 +57,7 @@ def model():
 @app.route('/model_learn', methods=['GET'])
 def model_learn():
     setup = {'name': 'モデル学習', 'do_action': '/learn_model'}
-    config_dir = Path(CONFIG_DIR)
-    configs = config_dir.glob("*")
-    configs = sorted([str(conf.stem) for conf in configs])
-    config = {'name': 'config', 'label': 'sel1', 'files': configs}
-    data_dir = Path(UPLOAD_DIR)
-    datas = data_dir.glob("*")
-    datas = sorted([str(data.stem) for data in datas])
-    data = {'name': 'data', 'label': 'sel2', 'files': datas}
-    forms = [config, data]
+    forms = get_config_data()
     return render_template('model_learn.html', forms=forms, setup=setup)
 
 
@@ -73,7 +70,7 @@ def learn_model():
     model, X, label, vectorizer = ml_setup(form)
     model.fit(X, label)
     if not(os.path.exists(os.path.join(MODEL_DIR, name))):
-        os.mkdir(os.path.join(MODEL_DIR, name))
+        os.makedirs(os.path.join(MODEL_DIR, name))
     model_save_file =os.path.join(MODEL_DIR, name, 'model.joblib')
     feature_save_file = os.path.join(MODEL_DIR, name, 'feature.joblib')
     with open(feature_save_file, 'wb') as f:
@@ -82,7 +79,7 @@ def learn_model():
     with open(model_save_file, 'wb') as f:
         dump(model, f)
         
-    flash('モデルの学習に成功しました')
+    flash('モデルの学習に成功しました', "alert alert-success")
     return redirect('/model_learn')
 
 
@@ -110,22 +107,14 @@ def load_model():
     with open(model_path, 'rb') as f:
         model = load(f)
 
-    flash('モデルの読み込みに成功しました')
+    flash('モデルの読み込みに成功しました', "alert alert-success")
     return redirect('/model_setup')
 
 
 @app.route('/valification', methods=['GET'])
 def valify_setup():
     setup= {'name': '交差検証', 'do_action': '/do_validate'}
-    config_dir = Path(CONFIG_DIR)
-    configs = config_dir.glob("*")
-    configs = sorted([str(config.stem) for config in configs])
-    config_param = {'name': 'config', 'label': 'sel1', 'files': configs}
-    data_dir = Path(UPLOAD_DIR)
-    datas = data_dir.glob("*")
-    datas = sorted([str(data.stem) for data in datas])
-    data_param = {'name': 'data', 'label': 'sel2', 'files': datas}
-    forms = [config_param, data_param]
+    forms = get_config_data()
     return render_template('validate.html', forms=forms, setup=setup)
 
 
@@ -159,53 +148,47 @@ def predict():
     return jsonify(response)
 
             
-@app.route('/upload_result', methods=['POST'])
+@app.route('/upload_data', methods=['POST'])
 def upload_multipart():
     if 'uploadfile' not in request.files:
         flash("ファイルが指定されていません", "alert alert-danger")
-        return render_template('upload.html')
+        return redirect('/upload')
         make_response(jsonify({'result': 'uploadfile is required.'}))
 
     file = request.files['uploadfile']
     filename = request.form['filename']
     if not(filename):
         flash('ファイル名が指定されていません', "alert alert-danger")
-        return render_template('upload.html')
+        return redirect('/upload')
 
-    savefilename = werkzeug.utils.secure_filename(filename)
-
-    file.save(os.path.join(UPLOAD_DIR, savefilename))
-    flash("設定を保存しました", "alert-success")
+    df = pd.read_csv(file, header=0)
+    print(df.head(3))
+    df.to_sql(filename, ENGINE, index=False)
+    flash("ファイルをデータベースに保存しました", "alert alert-success")
     return redirect('/upload')
 
 
 @app.route('/file_list', methods=['GET'])
 def get_file_list():
-    target_dir = Path(UPLOAD_DIR)
-    filelist = target_dir.glob('*')
-    filelist = [str(fname.name) for fname in filelist]
-    return render_template('files.html', names=filelist)
+    meta = MetaData(bind=ENGINE, reflect=True)
+    tables = list(meta.tables)
+    datas = sorted([str(table) for table in tables if table != 'config'])
+    return render_template('files.html', names=datas)
 
 
 @app.route('/save_config', methods=['POST'])
 def save_model_config():
-    file_name = request.form['name']
-    if not(file_name):
-        flash('ファイル名を指定してください')
+    config_name = request.form['name']
+    if not(config_name):
+        flash('config名を指定してください', "alert alert-danger")
         return redirect('/model_config')
-    file_name += '.json'
     model_name = request.form['algo']
     hyper_parameter = request.form['hyper']
-    if hyper_parameter:
-        parameter = json.loads(hyper_parameter)
-    else:
-        parameter = dict()
-    parameter['algo'] = model_name
-    filename = os.path.join(CONFIG_DIR, file_name)
-    with open(filename, 'w') as f:
-        json.dump(parameter, f)
-
-    flash('登録に成功しました')
+    ses = Session()
+    ses.add(Config(name=config_name, algo=model_name, hyper=hyper_parameter))
+    flash('登録に成功しました', "alert alert-success")
+    ses.commit()
+    ses.close()
     return redirect('/model_config')
 
 
@@ -215,12 +198,13 @@ def handle_over_max_file_size(error):
 
 
 def ml_setup(form):
-    config_file = os.path.join(CONFIG_DIR, form['config'] + '.json')
-    with open(config_file, 'r') as f:
-        config = json.load(f)
-
+    ses = Session()
+    config_name = form['config']
+    config_obj = ses.query(Config).filter(Config.name == config_name).one()
+    config = config_obj.toDict()
+    
     algo = config['algo']
-    if 'hyper' in config:
+    if len(config['hyper']) != 0:
         hyper_params = json.loads(config['hyper'])
     else:
         hyper_params = None
@@ -243,11 +227,12 @@ def ml_setup(form):
     else:
         model = model_type()
 
-    data_name = os.path.join(UPLOAD_DIR, form['data'])
-    data = pd.read_csv(data_name)
+    data_name = form['data']
+    data = pd.read_sql_table(data_name, ENGINE)
+    print(data.columns)
     text_field = form['text_field']
     text = data.loc[:, text_field].values
-    label = data.loc[:, 'label'].values
+    label = data.loc[:, 'annotation'].values
 
     vectorizer = CountVectorizer()
     docs = []
@@ -264,6 +249,21 @@ def get_wakati(text):
     return mecab.parse(text)
 
 
+def get_config_data():
+    ses = Session()
+    configs = ses.query(Config.name).all()
+    configs = sorted([str(config[0]) for config in configs])
+    config_param = {'name': 'config', 'label': 'sel1', 'files': configs}
+    meta = MetaData(bind=ENGINE, reflect=True)
+    tables = list(meta.tables)
+    datas = sorted([str(table) for table in tables if table != 'config'])
+    data_param = {'name': 'data', 'label': 'sel2', 'files': datas}
+    forms = [config_param, data_param]
+    ses.close()
+    return forms
+
+
 if __name__ == "__main__":
     print(app.url_map)
+    Session = sessionmaker(bind=ENGINE)
     app.run(host='localhost', port=8000, debug=True)
